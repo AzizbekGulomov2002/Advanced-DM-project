@@ -160,6 +160,11 @@ Based on experiments:
 - Apache Spark has higher startup cost but becomes more efficient for large-scale data processing.
 - Graph queries are most efficient in Neo4j due to native traversal optimization.
 
+Measured output from `performance_test.py`:
+- Postgres: `0.2325 sec`
+- MongoDB: `0.0404 sec`
+- Spark: `8.2996 sec`
+
 ## Why This Matters
 Most students can write code, but fewer can clearly explain design choices and trade-offs. This section makes the project academically stronger by connecting implementation decisions with system behavior and performance.
 
