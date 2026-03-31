@@ -4,3 +4,4 @@ pymongo
 psycopg2-binary
 neo4j
 pyspark
+python-dotenv

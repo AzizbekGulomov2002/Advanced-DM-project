@@ -62,6 +62,21 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 1.1) Configure environment variables
+Create your local `.env` file from the template:
+```bash
+cp .env.example .env
+```
+
+Then set your real credentials in `.env`:
+- `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- `MONGO_URI`, `MONGO_DB`
+- `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
+
+Security note:
+- `.env` is ignored by git.
+- `.env.example` is committed as a safe template without real secrets.
+
 ## 2) PostgreSQL (pgAdmin)
 1. Open **pgAdmin** and create a database (example: `advanced_dm`).
 2. Open Query Tool.

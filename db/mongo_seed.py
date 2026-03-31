@@ -1,8 +1,16 @@
 from pymongo import MongoClient
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
+from config.settings import MONGO_DB, MONGO_URI
 
 # Connect
-client = MongoClient("mongodb://localhost:27017/")
-db = client["company_project"]
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
 
 # Clean old data (IMPORTANT)
 db.persons.delete_many({})

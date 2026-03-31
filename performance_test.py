@@ -2,17 +2,26 @@ import time
 import psycopg2
 from pymongo import MongoClient
 from pyspark.sql import SparkSession
+from config.settings import (
+    MONGO_DB,
+    MONGO_URI,
+    POSTGRES_DB,
+    POSTGRES_HOST,
+    POSTGRES_PASSWORD,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+)
 
 # ---------------- POSTGRES ----------------
 def test_postgres():
     start = time.time()
 
     conn = psycopg2.connect(
-        dbname="company_project",
-        user="postgres",
-        password="@Azibek1py",
-        host="localhost",
-        port="5432"
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT
     )
     cur = conn.cursor()
 
@@ -33,8 +42,8 @@ def test_postgres():
 def test_mongo():
     start = time.time()
 
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["company_project"]
+    client = MongoClient(MONGO_URI)
+    db = client[MONGO_DB]
 
     list(db.works_in.aggregate([
         {
@@ -66,8 +75,8 @@ def test_spark():
 
     spark = SparkSession.builder.appName("PerfTest").getOrCreate()
 
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["company_project"]
+    client = MongoClient(MONGO_URI)
+    db = client[MONGO_DB]
 
     persons = list(db.persons.find({}, {"_id":0}))
     companies = list(db.companies.find({}, {"_id":0}))

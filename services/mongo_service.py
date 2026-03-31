@@ -1,6 +1,8 @@
 from pymongo import MongoClient
-client = MongoClient("mongodb://localhost:27017/")
-db = client["company_project"]
+from config.settings import MONGO_DB, MONGO_URI
+
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
 
 def get_person_company():
     result = db.works_in.aggregate([

@@ -1,10 +1,10 @@
 from neo4j import GraphDatabase
+from config.settings import NEO4J_PASSWORD, NEO4J_URI, NEO4J_USERNAME
 
-URI = "bolt://localhost:7687"
-USERNAME = "neo4j"
-PASSWORD = "@Azizbek1py"   # sen qo‘ygan
-
-driver = GraphDatabase.driver(URI, auth=(USERNAME, PASSWORD))
+driver = GraphDatabase.driver(
+    NEO4J_URI,
+    auth=(NEO4J_USERNAME, NEO4J_PASSWORD)
+)
 
 def get_reachable_users(name):
     with driver.session() as session:
