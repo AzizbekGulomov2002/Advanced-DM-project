@@ -1,70 +1,120 @@
 # Advanced Data Management Project
 
-## Loyiha haqida
-Ushbu loyiha `Advanced Data Management` fani uchun tayyorlangan bo'lib, berilgan topshiriq (`Slide_ADM(3).pdf`) asosida uch xil ma'lumotlar modeli amaliy ko'rinishda ishlangan:
+## Project Overview
+This project is implemented for the **Advanced Data Management** course based on the task in `Slide_ADM(3).pdf`.
 
-- `Relational model` - PostgreSQL
-- `Document model` - MongoDB
-- `Graph model` - Neo4j
+It demonstrates three data models:
+- **Relational model** using PostgreSQL
+- **Document model** using MongoDB (through PyMongo)
+- **Graph model** using Neo4j
 
-Loyihaning asosiy maqsadi: bir xil yoki o'xshash bog'lanishli ma'lumotlar ustida turli DBMS yondashuvlarini solishtirish.
+The main goal is to compare how relationships are modeled and queried across different database systems.
 
-## Slide bo'yicha bajarilgan qismlar
+## What Is Implemented (Based on the Slide)
 
-### 1) Relational vs Document (Part 1)
-- `db/postgres.sql` ichida `person`, `company`, `works_in` jadvallari yaratildi.
-- SQL orqali `INNER`, `LEFT`, `RIGHT`, `FULL OUTER JOIN` so'rovlari yozildi.
-- MongoDB uchun `db/mongo_seed.py` orqali ma'lumotlar seed qilinadi.
-- `services/mongo_service.py` ichida join mantiqlari aggregation (`$lookup`) orqali yozilgan.
-- FastAPI endpointlari orqali Mongo join natijalari olinadi:
-  - `/mongo/inner`
-  - `/mongo/left`
-  - `/mongo/right`
-  - `/mongo/full`
+### Part 1: Relational vs Document Model
+- SQL schema and sample data are implemented in `db/postgres.sql`:
+  - `person`
+  - `company`
+  - `works_in`
+- SQL query types included:
+  - `INNER JOIN`
+  - `LEFT JOIN`
+  - `RIGHT JOIN`
+  - `FULL OUTER JOIN`
+- MongoDB seed script is implemented in `db/mongo_seed.py` using **PyMongo**.
+- MongoDB join-like operations are implemented in `services/mongo_service.py` using aggregation stages such as `$lookup`, `$unwind`, and `$project`.
+- API endpoints for MongoDB outputs:
+  - `GET /mongo/inner`
+  - `GET /mongo/left`
+  - `GET /mongo/right`
+  - `GET /mongo/full`
 
-### 2) Relational vs Graph (Part 2)
-- `db/neo4j.cypher` ichida `User` tugunlari va `FOLLOWS` bog'lanishlari yaratildi.
-- Transitiv kuzatuv (`FOLLOWS*`) query'si berilgan.
-- `services/neo4j_service.py` va `/neo4j/reachable/{name}` endpointi orqali berilgan user uchun reachable userlar qaytariladi.
+### Part 2: Relational vs Graph Model
+- Graph dataset and relationships are implemented in `db/neo4j.cypher` with `User` nodes and `FOLLOWS` edges.
+- Transitive reachability query is implemented with `[:FOLLOWS*]`.
+- Neo4j service logic is implemented in `services/neo4j_service.py`.
+- API endpoint:
+  - `GET /neo4j/reachable/{name}`
 
-### 3) Spark qismi
-- `spark_jobs/` papkasi tayyorlangan (`dataframe_job.py`, `rdd_job.py`).
-- Hozirgi repoda Spark implementatsiya fayllari bo'sh holatda.
+### Spark Jobs (`spark_jobs`)
 
-## Loyihani ishga tushirish
+#### `spark_jobs/dataframe_job.py`
+- Uses `SparkSession` and reads `data/persons.json`.
+- Executes:
+  - `groupBy("company").count().show()`
+- This is a **DataFrame aggregate** operation to compute the number of records per company.
 
-## 1. Kutubxonalarni o'rnatish
+#### `spark_jobs/rdd_job.py`
+- Uses `SparkContext`.
+- Reads JSON lines and parses each row with `json.loads`.
+- Performs MapReduce-style processing:
+  - **Map step:** `(company, 1)`
+  - **Reduce step:** `reduceByKey(lambda a, b: a + b)`
+- Returns total person count per company via `collect()`.
+
+## Run Instructions
+
+## 1) Install dependencies
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 2. PostgreSQL
-- `db/postgres.sql` ni ishga tushiring.
+## 2) PostgreSQL (pgAdmin)
+1. Open **pgAdmin** and create a database (example: `advanced_dm`).
+2. Open Query Tool.
+3. Execute the SQL script from `db/postgres.sql`.
 
-## 3. MongoDB
+Optional CLI alternative:
+```bash
+psql -U postgres -d advanced_dm -f db/postgres.sql
+```
+
+## 3) MongoDB with PyMongo
+Start MongoDB server:
+```bash
+mongod --dbpath ~/mongodb-data
+```
+
+Seed MongoDB data using PyMongo:
 ```bash
 python db/mongo_seed.py
 ```
 
-## 4. Neo4j
-- `db/neo4j.cypher` skriptini Neo4j Browser'da run qiling.
+## 4) Neo4j Graph DB
+1. Start Neo4j Database (Neo4j Desktop or local service).
+2. Open Neo4j Browser (`http://localhost:7474`).
+3. Run the commands from `db/neo4j.cypher`.
 
-## 5. API
+The key query used for transitive traversal is:
+```cypher
+MATCH (a:User {name:"Mark"})-[:FOLLOWS*]->(u)
+RETURN DISTINCT u.name;
+```
+
+## 5) Run FastAPI
 ```bash
 uvicorn app.main:app --reload
 ```
 
-## Endpointlar
+## API Endpoints
 - `GET /mongo/inner`
 - `GET /mongo/left`
 - `GET /mongo/right`
 - `GET /mongo/full`
 - `GET /neo4j/reachable/{name}`
 
-## Qisqa xulosa
-Loyiha topshiriqdagi ma'lumotlar modellarini amaliy ko'rinishda ishlatadi va relational/document/graph yondashuvlarining query yozish uslubidagi farqlarini ko'rsatadi.
+## Run Spark Jobs
+```bash
+python spark_jobs/dataframe_job.py
+python spark_jobs/rdd_job.py
+```
+
+## Notes
+- The repository currently includes core relational/document/graph demonstrations.
+- Spark files currently demonstrate counting by company using both DataFrame aggregate and RDD MapReduce style.
 
 ---
-Azizbek Gulomov tomonidan bajarilgan.
+Completed by Azizbek Gulomov.
