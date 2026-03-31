@@ -116,5 +116,52 @@ python spark_jobs/rdd_job.py
 - The repository currently includes core relational/document/graph demonstrations.
 - Spark files currently demonstrate counting by company using both DataFrame aggregate and RDD MapReduce style.
 
+# System Design Choices (Why These Technologies)
+
+## Why PostgreSQL?
+PostgreSQL was used because it is a relational database designed for structured data and supports efficient JOIN operations. It is ideal when the schema is fixed and relationships between entities are well-defined.
+
+## Why MongoDB?
+MongoDB was chosen because it is a document-oriented NoSQL database that supports flexible schemas. It is useful when working with semi-structured data. However, since MongoDB has limited join capabilities, we used aggregation pipelines and Spark to simulate joins.
+
+## Why Neo4j?
+Neo4j was used because it is a graph database optimized for relationship-based queries. It allows efficient traversal operations such as multi-hop connections (transitive relationships), which are difficult to implement in relational databases.
+
+## Why Apache Spark?
+Apache Spark was used as a distributed data processing engine. It allows handling large-scale data efficiently using parallel computation. Spark was used to simulate MapReduce operations and to perform joins across distributed datasets.
+
+## Why RDD, DataFrame, and SparkSQL?
+
+- RDD (Resilient Distributed Dataset):
+  Used for low-level control and to manually implement MapReduce logic. It helps understand how distributed computation works internally.
+
+- DataFrame:
+  Provides a higher-level abstraction with optimizations. It is easier to use and more efficient than RDD for most operations.
+
+- SparkSQL:
+  Allows querying data using SQL syntax. It demonstrates how structured queries can be executed on distributed systems.
+
+## Key Insight
+
+Different systems are optimized for different tasks:
+
+- PostgreSQL -> structured data and strong consistency
+- MongoDB -> flexible schema and document storage
+- Neo4j -> relationship traversal
+- Spark -> large-scale distributed computation
+
+This project demonstrates how these systems complement each other rather than compete.
+
+# Performance Observation
+
+Based on experiments:
+
+- PostgreSQL and MongoDB are faster for small datasets due to lower overhead.
+- Apache Spark has higher startup cost but becomes more efficient for large-scale data processing.
+- Graph queries are most efficient in Neo4j due to native traversal optimization.
+
+## Why This Matters
+Most students can write code, but fewer can clearly explain design choices and trade-offs. This section makes the project academically stronger by connecting implementation decisions with system behavior and performance.
+
 ---
 Completed by Azizbek Gulomov.
