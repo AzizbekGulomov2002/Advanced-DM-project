@@ -5,7 +5,6 @@ This document explains how the project was implemented according to the task in 
 
 ## 2) Technology Stack
 - Python
-- FastAPI
 - PostgreSQL (relational model)
 - MongoDB with **PyMongo** (document model)
 - Neo4j (graph model)
@@ -49,22 +48,10 @@ Files:
   - `mongo_full_join()`
 - Uses stages such as `$lookup`, `$unwind`, `$project`, and `$ifNull`.
 
-### 3.3 API exposure for Part 1
-File: `app/main.py`
-
-PostgreSQL endpoints (SQL matches `db/postgres.sql` join semantics, including company-based **right** and **full** via `WITH`/`UNION ALL`):
-- `GET /postgres/inner`
-- `GET /postgres/left`
-- `GET /postgres/right`
-- `GET /postgres/full`
-
-MongoDB endpoints:
-- `GET /mongo/inner`
-- `GET /mongo/left`
-- `GET /mongo/right`
-- `GET /mongo/full`
-
-These return JSON results to compare join behavior at application level.
+### 3.3 Query execution for Part 1
+- PostgreSQL query logic is in `db/postgres.sql` (Tasks 1–4).
+- MongoDB join-like logic is in `services/mongo_service.py` (`mongo_inner_join`, `mongo_left_join`, `mongo_right_join`, `mongo_full_join`).
+- Spark implementations for the same semantics are in `spark_jobs/mongo_df_job.py`, `spark_jobs/mongo_sql_job.py`, and `spark_jobs/mongo_rdd_job.py`.
 
 ## Part 2: Comparing Relational and Graph Models
 
@@ -87,15 +74,11 @@ Files:
 - Connects to Neo4j via Bolt driver
 - Executes:
   - `MATCH (a:User {name:$name})-[:FOLLOWS*]->(u) RETURN DISTINCT u.name AS name`
-- Returns reachable users list to API caller.
+- Returns reachable users list to caller scripts.
 
-### 3.5 API exposure for Part 2
-File: `app/main.py`
-
-Neo4j endpoint:
-- `GET /neo4j/follows/{name}`
-
-This endpoint returns all transitively reachable users for a given user.
+### 3.5 Query execution for Part 2
+- Neo4j transitive traversal is executed through `services/neo4j_service.py`.
+- Spark graph traversals are executed through `spark_jobs/graph_frames_job.py` and `spark_jobs/rdd_graph_job.py`.
 
 ## 4) Spark Jobs Explanation
 
@@ -184,12 +167,7 @@ If using `cypher-shell`, you can run:
 cat db/neo4j.cypher | cypher-shell -u neo4j -p <your_password>
 ```
 
-## 5.5 Run API service
-```bash
-uvicorn app.main:app --reload
-```
-
-## 5.6 Run Spark jobs
+## 5.5 Run Spark jobs
 ```bash
 python spark_jobs/mongo_df_job.py
 python spark_jobs/mongo_rdd_job.py
@@ -198,13 +176,10 @@ python spark_jobs/rdd_graph_job.py
 python spark_jobs/graph_frames_job.py
 ```
 
-## 6) API Endpoints Summary
-- `GET /postgres/inner` | `/postgres/left` | `/postgres/right` | `/postgres/full`
-- `GET /mongo/inner`
-- `GET /mongo/left`
-- `GET /mongo/right`
-- `GET /mongo/full`
-- `GET /neo4j/follows/{name}`
+## 6) Query Execution Summary
+- Part 1 relational queries are in `db/postgres.sql` (Tasks 1–4).
+- Part 1 document queries are in `services/mongo_service.py` and Spark jobs (Tasks 5–12).
+- Part 2 graph queries are in `db/neo4j.cypher`, `services/neo4j_service.py`, and Spark graph jobs (Tasks 1–3).
 
 ## 7) Final Notes
 - The project demonstrates relational, document, and graph querying approaches clearly.
