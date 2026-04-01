@@ -29,29 +29,28 @@ The main goal is to compare how relationships are modeled and queried across dif
   - `GET /mongo/left`
   - `GET /mongo/right`
   - `GET /mongo/full`
+- API endpoints for PostgreSQL (same join ideas as `db/postgres.sql`):
+  - `GET /postgres/inner`
+  - `GET /postgres/left`
+  - `GET /postgres/right`
+  - `GET /postgres/full`
 
 ### Part 2: Relational vs Graph Model
 - Graph dataset and relationships are implemented in `db/neo4j.cypher` with `User` nodes and `FOLLOWS` edges.
 - Transitive reachability query is implemented with `[:FOLLOWS*]`.
 - Neo4j service logic is implemented in `services/neo4j_service.py`.
 - API endpoint:
-  - `GET /neo4j/reachable/{name}`
+  - `GET /neo4j/follows/{name}`
 
 ### Spark Jobs (`spark_jobs`)
 
-#### `spark_jobs/dataframe_job.py`
-- Uses `SparkSession` and reads `data/persons.json`.
-- Executes:
-  - `groupBy("company").count().show()`
-- This is a **DataFrame aggregate** operation to compute the number of records per company.
-
-#### `spark_jobs/rdd_job.py`
-- Uses `SparkContext`.
-- Reads JSON lines and parses each row with `json.loads`.
-- Performs MapReduce-style processing:
-  - **Map step:** `(company, 1)`
-  - **Reduce step:** `reduceByKey(lambda a, b: a + b)`
-- Returns total person count per company via `collect()`.
+| File | Role |
+|------|------|
+| `mongo_df_job.py` | Part 1 Tasks 5–8 — **DataFrame** API, data from MongoDB |
+| `mongo_sql_job.py` | Same tasks — **SparkSQL** (see docstring: why both exist) |
+| `mongo_rdd_job.py` | Part 1 Tasks 9–12 — **RDD** joins from MongoDB |
+| `rdd_graph_job.py` | Part 2 Task 3 — graph reachability from PostgreSQL (**RDD join** on edges) |
+| `graph_frames_job.py` | Part 2 Task 2 — **GraphFrames** BFS from PostgreSQL |
 
 ## Run Instructions
 
@@ -81,6 +80,12 @@ Security note:
 1. Open **pgAdmin** and create a database (example: `advanced_dm`).
 2. Open Query Tool.
 3. Execute the SQL script from `db/postgres.sql`.
+
+If you already applied an older `postgres.sql` without `study_title`, add the column once:
+
+```sql
+ALTER TABLE users ADD COLUMN study_title VARCHAR(100);
+```
 
 Optional CLI alternative:
 ```bash
@@ -115,21 +120,22 @@ uvicorn app.main:app --reload
 ```
 
 ## API Endpoints
-- `GET /mongo/inner`
-- `GET /mongo/left`
-- `GET /mongo/right`
-- `GET /mongo/full`
-- `GET /neo4j/reachable/{name}`
+- `GET /postgres/inner` | `/postgres/left` | `/postgres/right` | `/postgres/full`
+- `GET /mongo/inner` | `/mongo/left` | `/mongo/right` | `/mongo/full`
+- `GET /neo4j/follows/{name}`
 
 ## Run Spark Jobs
 ```bash
-python spark_jobs/dataframe_job.py
-python spark_jobs/rdd_job.py
+python spark_jobs/mongo_df_job.py
+python spark_jobs/mongo_rdd_job.py
+python spark_jobs/mongo_sql_job.py
+python spark_jobs/rdd_graph_job.py
+python spark_jobs/graph_frames_job.py
 ```
 
 ## Notes
-- The repository currently includes core relational/document/graph demonstrations.
-- Spark files currently demonstrate counting by company using both DataFrame aggregate and RDD MapReduce style.
+- `mongo_df_job.py` and `mongo_sql_job.py` implement the **same** Part 1 join scenarios in two Spark styles (DataFrame vs SQL); see the docstring in `mongo_sql_job.py` for a short defense line for exams.
+- `rdd_graph_job.py` expands the BFS frontier with an **RDD `join`** on `(follower_id, followee_id)` edges instead of a Python `dict` of the whole adjacency list.
 
 # System Design Choices (Why These Technologies)
 
@@ -175,13 +181,73 @@ Based on experiments:
 - Apache Spark has higher startup cost but becomes more efficient for large-scale data processing.
 - Graph queries are most efficient in Neo4j due to native traversal optimization.
 
-Measured output from `performance_test.py`:
+## Part 1 benchmark (`performance_test.py`)
+
+The script runs the full assignment grid: persons in `{100, 1000, 10000}`, companies in `{10, 100}`, occupation `{10%, 25%, 50%}`.
+
+For **each** cell it measures **four** join patterns (Tasks 1–4 style) on:
+
+- **PostgreSQL** (four SQL queries)  
+- **MongoDB** (matching aggregation pipelines)  
+- **Spark DataFrame** (inner / left / company-based right / full = employed + orphan companies, same as SQL CTE)  
+- **Spark RDD** (Tasks 9–12 style: inner, left with `groupByKey` for multi-company, right, full)
+
+**Part 2** prints **Neo4j**, **GraphFrames BFS** (same idea as `graph_frames_job.py`; needs `graphframes` + JAR — see env vars below), and **Spark RDD** graph reachability.
+
+### Quick run (one cell, for a sample table)
+
+```bash
+BENCHMARK_QUICK=1 python performance_test.py
+```
+
+Optional: disable automatic GraphFrames Ivy JAR download (GraphFrames column shows `n/a`):
+
+```bash
+ENABLE_GRAPHFRAMES_JAR=0 BENCHMARK_QUICK=1 python performance_test.py
+```
+
+### Example result row (100 persons, 10 companies, 10% employed)
+
+After `BENCHMARK_QUICK=1`, copy the printed seconds into a table like this:
+
+| Persons | Companies | Occ % | PG in | PG L | PG R | PG F | MG in | MG L | MG R | MG F | DF in | DF L | DF R | DF F | RDD in | RDD L | RDD R | RDD F |
+|--------:|----------:|------:|------:|-----:|-----:|-----:|------:|-----:|-----:|-----:|------:|------:|------:|------:|-------:|------:|------:|------:|
+| 100 | 10 | 10 | *from stdout* | … | … | … | … | … | … | … | … | … | … | … | … | … | … | … |
+
+**Part 2 example row** (10 users, 5% connections):
+
+| Users | Conn % | Neo4j (s) | GraphFrames (s) | RDD (s) |
+|------:|-------:|----------:|----------------:|--------:|
+| 10 | 5 | *stdout* | *stdout or n/a* | *stdout* |
+
+Legacy single-query sample (inner only, old smoke test — not the full benchmark):
+
 - Postgres: `0.2325 sec`
 - MongoDB: `0.0404 sec`
 - Spark: `8.2996 sec`
 
 ## Why This Matters
 Most students can write code, but fewer can clearly explain design choices and trade-offs. This section makes the project academically stronger by connecting implementation decisions with system behavior and performance.
+
+## Recent Fixes Applied
+- Removed duplicate file `spark_jobs/graph_rdd_job.py`. The correct file is `spark_jobs/rdd_graph_job.py`.
+- Fixed `generate_part1()` in `performance_test.py`:
+  - now data is created in correct order: **company -> person -> works_in**
+  - prevents empty `company_ids` and invalid `works_in` inserts
+- Fixed Part 2 Neo4j benchmark path:
+  - `generate_part2()` now writes generated users and follows relations to Neo4j
+  - `test_neo4j_part2()` now runs on real generated graph data (including `User0`)
+- **SQL Task 3 (RIGHT):** `db/postgres.sql` now starts from `company` with `LEFT JOIN` to `works_in` and `person` so companies with zero employees appear.
+- **SQL Task 4 (FULL):** replaced chained `FULL OUTER JOIN` with a `WITH` + `UNION ALL` pattern (employed rows + orphan companies).
+- **Spark DataFrame Task 8:** `mongo_df_job.py` full result = **left join chain + `left_anti` orphan companies + `unionByName`**, matching the SQL `WITH` / `UNION ALL` idea (not chained `FULL OUTER`).
+- **Spark DataFrame Tasks 7–8:** Task 7 is company-based; columns `person_name`, `surname`, `company_name`.
+- **SparkSQL Tasks 5–8:** `mongo_sql_job.py` now runs inner, left, right, and full queries.
+- **Spark RDD Task 10:** `mongo_rdd_job.py` uses `groupByKey` so a person with multiple jobs keeps all companies.
+- **Spark RDD Task 12:** full outer built from the corrected left side plus companies with no `works_in` rows.
+- **Part 1 performance:** `performance_test.py` times all four join types for Postgres, MongoDB, Spark **DataFrame**, and Spark **RDD** (Tasks 9–12).
+- **Part 2 performance:** Neo4j + **GraphFrames** + RDD graph timing in the same script.
+- **Schema (Slide):** `users` has optional **`study_title`**; sample `company.sector` values use only **automotive, banking, services, healthcare, chemicals, public**.
+- **Graph RDD job:** `rdd_graph_job.py` uses a Python `set` for reachable ids and drops unused RDD code.
 
 ---
 Completed by Azizbek Gulomov.
